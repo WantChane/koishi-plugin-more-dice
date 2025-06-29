@@ -1,0 +1,104 @@
+commands:
+  md:
+    roll:
+      description: 掷骰子
+      messages:
+        success: 您掷出了 {0}
+        dice-not-found: 掷骰子失败，请检查您的骰子组或骰子名称是否正确。
+
+    info:
+      messages:
+        title: '您的骰子组:'
+        uninitialized: 您还没有初始化骰子组，请先使 md.init 初始化。
+        no-dice: 暂无骰子。
+        public-prefix: '[公开] {0}, {1}个骰子'
+        private-prefix: '[私有] {0}, {1}个骰子'
+
+    init:
+      description: 初始化用户骰子组
+      messages:
+        success: 初始化成功！已为您创建默认骰子组。
+        fail: 您已初始化过骰子组，请勿重复初始化！
+
+    group:
+      description: 骰子组管理
+      create:
+        description: 创建骰子组
+        messages:
+          success: '骰子组 "{0}" 创建成功！'
+          fail: 创建骰子组失败，请检查名称是否已存在或其他错误。
+          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          duplicate-group-name: 骰子组名称已存在，请使用其他名称。
+
+      setpublic:
+        description: 设置组公开状态
+        messages:
+          group-not-found: 请检查您的骰子组名称是否正确。
+          success-public: '已将组 "{0}" 设为 [公开]。'
+          success-private: '已将组 "{0}" 设为 [私有]。'
+
+      clone:
+        description: 克隆骰子组
+        messages:
+          source-not-found: 源骰子组 "{0}" 不存在，请检查名称是否正确。
+          target-exists: 目标骰子组 "{0}" 已存在，请使用其他名称。
+          duplicate-group-name: 找到多个同名骰子组，请使用ID克隆
+          group-not-found: 骰子组 "{0}" 不存在，请检查名称是否正确。
+          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          group-name-exists: 骰子组名称已存在，请使用其他名称。
+          success: 成功克隆骰子组 "{0}" 到 "{1}"。
+      
+      rename:
+        description: 重命名骰子组
+        messages:
+          group-not-found: 请检查您的骰子组名称是否正确。
+          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          duplicate-group-name: 骰子组名称已存在，请使用其他名称。
+          success: '骰子组"{0}"已重命名为"{1}"。'
+
+      search:
+        description: 搜索公开骰子组
+        messages:
+          group-not-found: 未找到匹配的骰子组。
+          results: |-
+            找到的公开骰子组:
+            {0}
+          group-info: ' {0}(ID: {1})'
+
+      delete:
+        description: 删除骰子组
+        messages:
+          group-not-found: 请检查您的骰子组名称是否正确。
+          success: '骰子组 "{0}" 已删除。'
+
+    dice:
+      description: 骰子管理
+      create:
+        description: 创建新骰子
+        messages:
+          success: '骰子 "{0}" 创建成功！'
+          group-not-found: 创建骰子失败，请检查名称是否正确或使用 md.init 初始化。
+          invalid-faces: 骰子面解析失败，请使用逗号分隔的数字列表，或base64编码的字符串。
+          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          duplicate-dice-name: 骰子名称已存在，请使用其他名称。
+
+      rename:
+        description: 重命名骰子
+        messages:
+          dice-not-found: 请检查您的骰子名称是否正确。
+          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          duplicate-dice-name: 骰子名称已存在，请使用其他名称。
+          success: '骰子"{0}"已重命名为"{1}"。'
+
+      delete:
+        description: 删除骰子
+        messages:
+          dice-not-found: 请检查您的骰子名称是否正确。
+          success: '骰子 "{0}" 已删除。'
+
+      set:
+        description: 修改骰子面
+        messages:
+          dice-not-found: 请检查您的骰子名称是否正确。
+          invalid-faces: 骰子面解析失败，请使用逗号分隔的数字列表，或base64编码的字符串。
+          success: '骰子 "{0}" 已更新。'
