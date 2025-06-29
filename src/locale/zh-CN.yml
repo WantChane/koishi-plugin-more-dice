@@ -4,6 +4,9 @@ commands:
       description: 掷骰子
       messages:
         success: 您掷出了 {0}
+        multi-success: |-
+          您掷出了 {0} 次骰子，结果为：
+          {1}
         dice-not-found: 掷骰子失败，请检查您的骰子组或骰子名称是否正确。
 
     info:
@@ -27,7 +30,7 @@ commands:
         messages:
           success: '骰子组 "{0}" 创建成功！'
           fail: 创建骰子组失败，请检查名称是否已存在或其他错误。
-          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
           duplicate-group-name: 骰子组名称已存在，请使用其他名称。
 
       setpublic:
@@ -44,7 +47,7 @@ commands:
           target-exists: 目标骰子组 "{0}" 已存在，请使用其他名称。
           duplicate-group-name: 找到多个同名骰子组，请使用ID克隆
           group-not-found: 骰子组 "{0}" 不存在，请检查名称是否正确。
-          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
           group-name-exists: 骰子组名称已存在，请使用其他名称。
           success: 成功克隆骰子组 "{0}" 到 "{1}"。
       
@@ -52,7 +55,7 @@ commands:
         description: 重命名骰子组
         messages:
           group-not-found: 请检查您的骰子组名称是否正确。
-          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
           duplicate-group-name: 骰子组名称已存在，请使用其他名称。
           success: '骰子组"{0}"已重命名为"{1}"。'
 
@@ -79,14 +82,14 @@ commands:
           success: '骰子 "{0}" 创建成功！'
           group-not-found: 创建骰子失败，请检查名称是否正确或使用 md.init 初始化。
           invalid-faces: 骰子面解析失败，请使用逗号分隔的数字列表，或base64编码的字符串。
-          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
           duplicate-dice-name: 骰子名称已存在，请使用其他名称。
 
       rename:
         description: 重命名骰子
         messages:
           dice-not-found: 请检查您的骰子名称是否正确。
-          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度在3-20字符之间。
+          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
           duplicate-dice-name: 骰子名称已存在，请使用其他名称。
           success: '骰子"{0}"已重命名为"{1}"。'
 

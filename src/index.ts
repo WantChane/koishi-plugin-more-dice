@@ -1,82 +1,20 @@
 import { Context, Schema, $ } from 'koishi'
+import { parseFaces, validateName } from './util'
+import { databaseInit, type Dice, type DiceGroup } from './db/init'
 
 export const name = 'more-dice'
 
 export interface Config { }
 
 export const inject = {
-  required: ['database'],
-  optional: ['bind'],
-}
-
-declare module 'koishi' {
-  interface Tables {
-    "md-dices": Dice,
-    "md-dice-groups": DiceGroup,
-  }
-}
-
-// 骰子数据结构
-export interface Dice {
-  id: number
-  name: string
-  faces: string[]
-  groupId: number
-  deleted: boolean
-}
-
-// 骰子组数据结构
-export interface DiceGroup {
-  id: number
-  name: string
-  userId: number
-  isPublic: boolean
-  deleted: boolean
+  required: ['database', 'http'],
 }
 
 export const Config: Schema<Config> = Schema.object({})
 
 export function apply(ctx: Context) {
   ctx.i18n.define('zh-CN', require('./locale/zh-CN.yml'))
-  // ==============================
-  // 新增：验证名字合法性的函数
-  // ==============================
-  /**
-   * 验证名称是否合法（20个字符以内的英文或数字，必须以字母开头）
-   * @param name 要验证的名称
-   * @returns 是否合法
-   */
-  function validateName(name: string): boolean {
-    return /^[a-zA-Z][a-zA-Z0-9]{2,19}$/.test(name)
-  }
-  ctx.model.drop('md-dices')
-  // 扩展数据库表 - 添加逻辑删除字段
-  ctx.model.extend('md-dices', {
-    id: 'unsigned',
-    name: 'string',
-    faces: 'list',
-    groupId: 'unsigned',
-    deleted: 'boolean',
-  }, {
-    primary: 'id',
-    autoInc: true,
-  })
-
-  ctx.model.drop('md-dice-groups')
-  ctx.model.extend('md-dice-groups', {
-    id: 'unsigned',
-    name: 'string',
-    userId: 'unsigned',
-    isPublic: 'boolean',
-    deleted: 'boolean',
-  }, {
-    primary: "id",
-    autoInc: true,
-  })
-
-  // ==============================
-  // 核心公共函数
-  // ==============================
+  databaseInit(ctx)
 
   /**
    * 解析骰子标识符 (ID 或 [group]:name 格式)
@@ -143,25 +81,6 @@ export function apply(ctx: Context) {
       { id: groupId, userId, deleted: false }
     )
     return group.length > 0
-  }
-
-  /**
-   * 解析骰子面字符串 (支持逗号分隔或base64编码)
-   * @param input 输入字符串
-   * @returns 面数组
-   */
-  function parseFaces(input: string): string[] {
-    try {
-      // 尝试base64解码
-      if (input.startsWith('base64:')) {
-        const base64String = input.slice(7)
-        const decoded = Buffer.from(base64String, 'base64').toString('utf-8')
-        return decoded.split(',')
-      }
-    } catch {
-      // 解码失败则继续尝试逗号分割
-    }
-    return input.split(',')
   }
 
   // ==============================
@@ -372,8 +291,9 @@ export function apply(ctx: Context) {
   const diceCmd = ctx.command('md.dice')
 
   // 创建骰子
-  diceCmd.subcommand('.create <name:string> <faces:string>')
+  diceCmd.subcommand('.create <name:string> <faces:text>')
     .option('group', '-g <group:string>', { fallback: '' })
+    .option('jsonpath', '-j [jsonpath:string]', { fallback: '' })
     .userFields(['id'])
     .action(async ({ session, options }, name, faces) => {
       const userId = session.user.id
@@ -391,7 +311,7 @@ export function apply(ctx: Context) {
       if (!groups.length) return session.text('.group-not-found', [groupName])
 
       // 解析骰子面
-      const facesArray = parseFaces(faces)
+      const facesArray = await parseFaces(faces, { ctx: ctx, jsonpath: options.jsonpath })
       if (!facesArray.length) return session.text('invalid-faces')
 
       // 检查同名骰子
@@ -447,14 +367,15 @@ export function apply(ctx: Context) {
     })
 
   // 修改骰子面
-  diceCmd.subcommand('.set <dice:string> <faces:string>', '修改骰子面')
+  diceCmd.subcommand('.set <dice:string> <faces:text>', '修改骰子面')
     .userFields(['id'])
-    .action(async ({ session }, dice, faces) => {
+    .option('jsonpath', '-j [jsonpath:string]', { fallback: '' })
+    .action(async ({ session, options }, dice, faces) => {
       const userId = session.user.id
       const diceObj = await parseDiceIdentifier(userId, dice)
       if (!diceObj) return session.text('.dice-not-found')
 
-      const facesArray = parseFaces(faces)
+      const facesArray = await parseFaces(faces, { ctx: ctx, jsonpath: options.jsonpath })
       if (!facesArray.length) return session.text('.invalid-faces')
 
       await ctx.database.set('md-dices', diceObj.id, { faces: facesArray })
@@ -464,16 +385,29 @@ export function apply(ctx: Context) {
   // ==============================
   // 核心功能：掷骰命令
   // ==============================
-  ctx.command('md.roll <dice:string>')
+  ctx.command('md.roll <dice:string> [times:number]')
     .userFields(['id'])
-    .action(async ({ session }, dice) => {
+    .action(async ({ session }, dice, times = 1) => {
       const userId = session.user.id
       const diceObj = await parseDiceIdentifier(userId, dice)
       if (!diceObj) return session.text('.dice-not-found')
 
-      // 随机选择一面
-      const result = diceObj.faces[Math.floor(Math.random() * diceObj.faces.length)]
-      return session.text('.success', [result])
+      times = Math.max(1, times)
+
+      const results = []
+      for (let i = 0; i < times; i++) {
+        const result = diceObj.faces[Math.floor(Math.random() * diceObj.faces.length)]
+        results.push(result)
+      }
+
+      if (times === 1) {
+        return session.text('.success', [results[0]])
+      } else {
+        return session.text('.multi-success', [
+          times,
+          results.join(', ')
+        ])
+      }
     })
 
   // ==============================

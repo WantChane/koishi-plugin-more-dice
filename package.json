@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-more-dice",
-  "description": "",
-  "version": "0.0.1",
+  "description": "a Koishi plugin providing more dice",
+  "version": "1.0.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -10,11 +10,26 @@
   ],
   "license": "MIT",
   "keywords": [
-    "chatbot",
-    "koishi",
-    "plugin"
+    "random",
+    "dice"
   ],
   "peerDependencies": {
     "koishi": "^4.18.7"
+  },
+  "dependencies": {
+    "jsonpath-plus": "^10.3.0"
+  },
+  "koishi": {
+    "description": {
+      "en": "a Koishi plugin providing more dice",
+      "zh": "一个提供更多骰子功能的 Koishi 插件"
+    },
+    "service": {
+      "required": [
+        "database",
+        "http"
+      ]
+    },
+    "preview": true
   }
 }
