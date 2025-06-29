@@ -2,6 +2,11 @@ commands:
   md:
     roll:
       description: 掷骰子
+      examples: |-
+        md.roll abc
+        md.roll abc 3
+        md.roll 1
+        md.roll mygroup:abc
       messages:
         success: 您掷出了 {0}
         multi-success: |-
@@ -10,6 +15,7 @@ commands:
         dice-not-found: 掷骰子失败，请检查您的骰子组或骰子名称是否正确。
 
     info:
+      description: 查看骰子组和骰子信息
       messages:
         title: '您的骰子组:'
         uninitialized: 您还没有初始化骰子组，请先使 md.init 初始化。
@@ -27,6 +33,8 @@ commands:
       description: 骰子组管理
       create:
         description: 创建骰子组
+        examples: |-
+          md.group.create mygroup
         messages:
           success: '骰子组 "{0}" 创建成功！'
           fail: 创建骰子组失败，请检查名称是否已存在或其他错误。
@@ -35,6 +43,9 @@ commands:
 
       setpublic:
         description: 设置组公开状态
+        examples: |-
+          md.group.setpublic mygroup 1
+          md.group.setpublic mygroup 0
         messages:
           group-not-found: 请检查您的骰子组名称是否正确。
           success-public: '已将组 "{0}" 设为 [公开]。'
@@ -42,6 +53,9 @@ commands:
 
       clone:
         description: 克隆骰子组
+        examples: |-
+          md.group.clone oldgroup newgroup
+          md.group.clone 1 newgroup
         messages:
           source-not-found: 源骰子组 "{0}" 不存在，请检查名称是否正确。
           target-exists: 目标骰子组 "{0}" 已存在，请使用其他名称。
@@ -53,6 +67,8 @@ commands:
       
       rename:
         description: 重命名骰子组
+        examples: |-
+          md.group.rename mygroup newname
         messages:
           group-not-found: 请检查您的骰子组名称是否正确。
           invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
@@ -61,6 +77,8 @@ commands:
 
       search:
         description: 搜索公开骰子组
+        examples: |-
+          md.group.search othergroup
         messages:
           group-not-found: 未找到匹配的骰子组。
           results: |-
@@ -70,6 +88,8 @@ commands:
 
       delete:
         description: 删除骰子组
+        examples: |-
+          md.group.delete mygroup
         messages:
           group-not-found: 请检查您的骰子组名称是否正确。
           success: '骰子组 "{0}" 已删除。'
@@ -78,6 +98,12 @@ commands:
       description: 骰子管理
       create:
         description: 创建新骰子
+        examples: |-
+          md.dice.create abc a,b,c
+          md.dice.create abc1 a,b,c -g mygroup
+          md.dice.create abc2 base64:YSxiLGM=
+          md.dice.create abc3 -j $.result[*].face base64:eyJyZXN1bHQiOlt7ImZhY2UiOiJhIn0seyJmYWNlIjoiYiJ9LHsiZmFjZSI6ImMifV19
+          md.dice.create abc4 -j $.result[*].face https://api.example.com/dice
         messages:
           success: '骰子 "{0}" 创建成功！'
           group-not-found: 创建骰子失败，请检查名称是否正确或使用 md.init 初始化。
@@ -87,6 +113,10 @@ commands:
 
       rename:
         description: 重命名骰子
+        examples: |-
+          md.dice.rename abc newname
+          md.dice.rename mygroup:abc newname
+          md.dice.rename 1 newname
         messages:
           dice-not-found: 请检查您的骰子名称是否正确。
           invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
@@ -95,12 +125,19 @@ commands:
 
       delete:
         description: 删除骰子
+        examples: |-
+          md.dice.delete abc
+          md.dice.delete mygroup:abc
         messages:
           dice-not-found: 请检查您的骰子名称是否正确。
           success: '骰子 "{0}" 已删除。'
 
       set:
         description: 修改骰子面
+        examples: |-
+          md.dice.set abc 1,2,3,4,5,6
+          md.dice.set abc base64:MSwyLDMsNCw1LDY=
+          md.dice.set abc -j $.result[*].face https://api.example.com/dice
         messages:
           dice-not-found: 请检查您的骰子名称是否正确。
           invalid-faces: 骰子面解析失败，请使用逗号分隔的数字列表，或base64编码的字符串。
