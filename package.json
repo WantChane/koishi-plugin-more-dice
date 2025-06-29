@@ -17,13 +17,6 @@
     "koishi": "^4.18.7",
     "jsonpath-plus": "^10.3.0"
   },
-  "dependencies": {
-    "jsonpath-plus": "^10.3.0"
-  },
-  "devDependencies": {
-    "@koishijs/plugin-database-sqlite": "^4.6.0",
-    "@koishijs/plugin-http": "^0.6.3"
-  },
   "koishi": {
     "description": {
       "en": "a Koishi plugin providing more dice",
