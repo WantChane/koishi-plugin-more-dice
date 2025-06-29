@@ -312,7 +312,7 @@ export function apply(ctx: Context) {
 
       // 解析骰子面
       const facesArray = await parseFaces(faces, { ctx: ctx, jsonpath: options.jsonpath })
-      if (!facesArray.length) return session.text('invalid-faces')
+      if (!facesArray.length) return session.text('.invalid-faces')
 
       // 检查同名骰子
       const existing = await ctx.database.get('md-dices',
