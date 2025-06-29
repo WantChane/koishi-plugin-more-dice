@@ -12,7 +12,7 @@ export async function parseFaces(input: string, options?: ParseOptions): Promise
     try {
         // ==================== 网络资源处理 ====================
         if (input.startsWith('http://') || input.startsWith('https://')) {
-            if (!options?.ctx) throw new Error('Context required for HTTP requests')
+            if (!options.ctx.http) throw new Error('HTTP client is not available. Please ensure the HTTP plugin is installed and configured.')
 
             const response = await options.ctx.http.get(input, {
                 headers: { Accept: 'application/json' },

@@ -7,7 +7,8 @@ export const name = 'more-dice'
 export interface Config { }
 
 export const inject = {
-  required: ['database', 'http'],
+  required: ['database'],
+  optional: ['http']
 }
 
 export const Config: Schema<Config> = Schema.object({})
