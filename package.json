@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-more-dice",
   "description": "a Koishi plugin providing more dice",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -14,8 +14,8 @@
     "dice"
   ],
   "peerDependencies": {
-    "koishi": "^4.18.7",
-    "jsonpath-plus": "^10.3.0"
+    "jsonpath-plus": "^10.3.0",
+    "koishi": "^4.18.7"
   },
   "koishi": {
     "description": {
@@ -31,5 +31,8 @@
       ]
     },
     "preview": true
+  },
+  "devDependencies": {
+    "jsonpath-plus": "^10.3.0"
   }
 }

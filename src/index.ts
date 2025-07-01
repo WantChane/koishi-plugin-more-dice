@@ -1,458 +1,193 @@
-import { Context, Schema, $ } from 'koishi'
-import { parseFaces, validateName } from './util'
-import { databaseInit, type Dice, type DiceGroup } from './db/init'
-
+import { Context } from 'koishi'
 export const name = 'more-dice'
-
-export interface Config { }
-
 export const inject = {
   required: ['database'],
-  optional: ['http']
+  optional: ['http'],
 }
 
-export const Config: Schema<Config> = Schema.object({})
+export * from './config'
+
+import { DiceDao, GroupDao, databaseInit } from './db'
+import { GroupService } from './service'
+import { DiceService } from './service/dice.service'
 
 export function apply(ctx: Context) {
   ctx.i18n.define('zh-CN', require('./locale/zh-CN.yml'))
+
+  const logger = ctx.logger('more-dice').extend('main')
   databaseInit(ctx)
 
-  /**
-   * 解析骰子标识符 (ID 或 [group]:name 格式)
-   * @param userId 当前用户ID
-   * @param diceIdentifier 骰子标识符
-   * @returns 骰子对象
-   */
-  async function parseDiceIdentifier(userId: number, diceIdentifier: string): Promise<Dice> {
-    // 1. 如果是纯数字，按ID查询
-    if (/^\d+$/.test(diceIdentifier)) {
-      const dice = await ctx.database.get('md-dices',
-        { id: +diceIdentifier, deleted: false }
-      )
-      if (dice.length && await validateGroupOwnership(userId, dice[0].groupId)) {
-        return dice[0]
-      }
-      return null
-    }
+  const groupDao = new GroupDao(ctx)
+  const diceDao = new DiceDao(ctx)
 
-    // 2. 解析 [group]:name 格式（组名可选）
-    const match = diceIdentifier.match(/^(?:([a-zA-Z][a-zA-Z0-9]*):)?([a-zA-Z][a-zA-Z0-9]+)$/)
-    if (match) {
-      const [, groupName, diceName] = match
+  const groupService = new GroupService(groupDao, diceDao, ctx)
+  const diceService = new DiceService(diceDao, groupService, ctx)
 
-      // 如果有提供组名
-      if (groupName) {
-        const group = await ctx.database.get('md-dice-groups',
-          { name: groupName, userId, deleted: false }
-        )
-        if (!group.length) return null
+  const mainCmd = ctx.command('md')
 
-        const dice = await ctx.database.get('md-dices',
-          { name: diceName, groupId: group[0].id, deleted: false }
-        )
-        return dice.length ? dice[0] : null
-      }
-      // 如果没有提供组名，则搜索用户所有组
-      else {
-        const dice = await ctx.database.get('md-dices', {
-          name: diceName,
-          deleted: false,
-          groupId: {
-            $in: (await ctx.database.get('md-dice-groups',
-              { userId, deleted: false }
-            )).map(g => g.id)
-          }
-        })
-
-        return dice.length === 1 ? dice[0] : null
-      }
-    }
-
-    return null
-  }
-
-  /**
-   * 验证用户是否拥有指定骰子组
-   * @param userId 用户ID
-   * @param groupId 骰子组ID
-   * @returns 是否拥有权限
-   */
-  async function validateGroupOwnership(userId: number, groupId: number): Promise<boolean> {
-    const group = await ctx.database.get('md-dice-groups',
-      { id: groupId, userId, deleted: false }
-    )
-    return group.length > 0
-  }
-
-  // ==============================
-  // 初始化命令
-  // ==============================
-  ctx.command('md.init')
+  mainCmd.subcommand('.init')
     .userFields(['id'])
     .action(async ({ session }) => {
       const userId = session.user.id
-
-      const existing = await ctx.database.get('md-dice-groups',
-        { userId, name: `group${userId}`, deleted: false }
-      )
-      if (existing.length) return session.text('.fail')
-
-      await ctx.database.create('md-dice-groups', {
-        name: `group${userId}`,
-        userId,
-        isPublic: false,
-        deleted: false
-      })
-      return session.text('.success')
-    })
-
-  // ==============================
-  // 组管理命令
-  // ==============================
-  const groupCmd = ctx.command('md.group')
-
-  // 创建组
-  groupCmd.subcommand('.create <name:string>')
-    .userFields(['id'])
-    .action(async ({ session }, name) => {
-      const userId = session.user.id
-
-      // 使用验证函数验证组名格式
-      if (!validateName(name)) {
-        return session.text('.invalid-group-name')
-      }
-
-      // 检查组名是否已存在
-      const existing = await ctx.database.get('md-dice-groups',
-        { name, userId, deleted: false }
-      )
-      if (existing.length) return session.text('.duplicate-group-name')
-
-      // 创建新组
-      await ctx.database.create('md-dice-groups', {
-        name,
-        userId,
-        isPublic: false,
-        deleted: false
-      })
-
-      return session.text('.success', [name])
-    })
-
-  // 设置组公开状态
-  groupCmd.subcommand('.setpublic <name:string> <state:number>')
-    .userFields(['id'])
-    .action(async ({ session }, name, state) => {
-      const userId = session.user.id
-      const state_boolean = !!state
-      const groups = await ctx.database.get('md-dice-groups',
-        { name, userId, deleted: false }
-      )
-      if (!groups.length) return session.text('.group-not-found')
-
-      await ctx.database.set('md-dice-groups', { id: groups[0].id, name }, { isPublic: state_boolean })
-      return state_boolean ? session.text('.success-public', [name]) : session.text('.success-private', [name])
-    })
-
-  // 克隆组
-  groupCmd.subcommand('.clone <source:string> [target:string]')
-    .userFields(['id'])
-    .action(async ({ session }, source, target) => {
-      const userId = session.user.id
-
-      // 查找源组
-      let sourceGroup: DiceGroup
-      if (/^\d+$/.test(source)) {
-        // 按ID查找
-        sourceGroup = (await ctx.database.get('md-dice-groups',
-          { id: +source, isPublic: true, deleted: false }
-        ))[0]
-      } else {
-        // 按名称查找（只查询公开组）
-        const groups = await ctx.database.get('md-dice-groups',
-          { name: source, isPublic: true, deleted: false }
+      return await groupService.initGroup(userId)
+        .then(
+          result => result ? session.text('.init-success', [result.name]) : session.text('.init-failed')
         )
-        if (groups.length > 1) return session.text('.duplicate-group-name')
-        sourceGroup = groups[0]
-      }
-
-      if (!sourceGroup) return session.text('.group-not-found', [source])
-
-      // 确定目标组名
-      target = target || `${sourceGroup.name}`
-
-      // 使用验证函数验证组名格式
-      if (!validateName(target)) {
-        return session.text('.invalid-group-name')
-      }
-
-      const nameExists = await ctx.database.get('md-dice-groups',
-        { name: target, userId, deleted: false }
-      )
-      if (nameExists.length) return session.text('.group-name-exists')
-
-      // 创建新组
-      const newGroup = await ctx.database.create('md-dice-groups', {
-        name: target,
-        userId,
-        isPublic: false,
-        deleted: false
-      })
-
-      // 克隆骰子
-      const dices = await ctx.database.get('md-dices',
-        { groupId: sourceGroup.id, deleted: false }
-      )
-      for (const dice of dices) {
-        await ctx.database.create('md-dices', {
-          name: dice.name,
-          faces: dice.faces,
-          groupId: newGroup.id,
-          deleted: false
+        .catch(error => {
+          logger.error('Failed to initialize group:', error.message)
+          return session.text(error.name, error.array)
         })
-      }
-
-      return session.text('.success', [sourceGroup.name, newGroup.name])
     })
 
-  // 重命名组
-  groupCmd.subcommand('.rename <oldName:string> <newName:string>')
+  mainCmd.subcommand('.roll <input:string> [times:number]')
     .userFields(['id'])
-    .action(async ({ session }, oldName, newName) => {
+    .action(async ({ session }, input, times) => {
       const userId = session.user.id
-
-      // 使用验证函数验证新组名格式
-      if (!validateName(newName)) {
-        return session.text('.invalid-group-name')
-      }
-
-      const groups = await ctx.database.get('md-dice-groups',
-        { name: oldName, userId, deleted: false }
-      )
-      if (!groups.length) return session.text('.group-not-found')
-
-      // 检查新名称是否已存在
-      const nameExists = await ctx.database.get('md-dice-groups',
-        { name: newName, userId, deleted: false }
-      )
-      if (nameExists.length) return session.text('.duplicate-group-name')
-
-      await ctx.database.set('md-dice-groups', groups[0].id, { name: newName })
-
-      return session.text('.success', [oldName, newName])
-    })
-
-  // 搜索组
-  groupCmd.subcommand('.search <name:string>')
-    .action(async ({ session }, name) => {
-      const groups = await ctx.database.select('md-dice-groups')
-        .where({
-          name: { $regex: new RegExp(name, 'i') },
-          isPublic: true,
-          deleted: false
+      return await diceService.rollDice(input, userId, times)
+        .then(
+          result => result ? session.text('.roll-success', [input, result.join(', ')]) : session.text('.roll-failed', [input])
+        )
+        .catch(error => {
+          this.logger.error('Failed to roll dice:', error.message)
+          return session.text(error.name, error.array)
         })
-        .limit(10)
-        .execute()
-
-      if (!groups.length) return session.text('.group-not-found')
-
-      return session.text('.results', [groups.map(g =>
-        session.text('.group-info', [g.name, g.id])
-      ).join('\n')])
-
-
     })
 
-  // 删除组（逻辑删除）
-  groupCmd.subcommand('.delete <name:string>')
+  const groupCmd = mainCmd.subcommand('.group')
+  groupCmd.subcommand('.add <name:text>')
     .userFields(['id'])
     .action(async ({ session }, name) => {
       const userId = session.user.id
-
-      const groups = await ctx.database.get('md-dice-groups',
-        { name, userId, deleted: false }
-      )
-      if (!groups.length) return session.text('.group-not-found')
-
-      // 逻辑删除组
-      await ctx.database.set('md-dice-groups', groups[0].id, { deleted: true })
-
-      // 逻辑删除组内所有骰子
-      await ctx.database.set('md-dices',
-        { groupId: groups[0].id },
-        { deleted: true }
-      )
-
-      return session.text('.success', [name])
+      return await groupService.addGroup(name, userId)
+        .then(
+          result => result ? session.text('.add-success', [name, result.id]) : session.text('.add-failed', [name])
+        )
+        .catch(error => {
+          logger.error('Failed to add group:', error.message)
+          return session.text(error.name, error.array)
+        })
     })
 
-  // ==============================
-  // 骰子管理命令
-  // ==============================
-  const diceCmd = ctx.command('md.dice')
+  groupCmd.subcommand('.rename <input:string> <newName:string>')
+    .userFields(['id'])
+    .action(async ({ session }, input, newName) => {
+      const userId = session.user.id
+      return await groupService.renameGroup(input, userId, newName)
+        .then(
+          result => result > 0 ? session.text('.rename-success', [input, newName]) : session.text('.rename-failed', [input])
+        )
+        .catch(error => {
+          logger.error('Failed to rename group:', error.message)
+          return session.text(error.name, error.array)
+        })
+    })
 
-  // 创建骰子
-  diceCmd.subcommand('.create <name:string> <faces:text>')
-    .option('group', '-g <group:string>', { fallback: '' })
-    .option('jsonpath', '-j [jsonpath:string]', { fallback: '' })
+  groupCmd.subcommand('.delete <input:string>')
+    .userFields(['id'])
+    .action(async ({ session }, input) => {
+      const userId = session.user.id
+      return await groupService.deleteGroup(input, userId)
+        .then(
+          result => result > 0 ? session.text('.delete-success', [input]) : session.text('.delete-failed', [input])
+        )
+        .catch(error => {
+          this.logger.error('Failed to delete group:', error.message)
+          return session.text(error.name, error.array)
+        })
+    })
+
+  groupCmd.subcommand('.setpublic <input:string> <isPublic:number>')
+    .userFields(['id'])
+    .action(async ({ session }, input, isPublic) => {
+      const userId = session.user.id
+      const isPublicBool = !!isPublic
+      return await groupService.setGroupPublic(input, userId, isPublicBool)
+        .then(
+          result => result > 0 ? session.text(isPublicBool ? '.setpublic-success-public' : '.setpublic-success-private', [input]) : session.text('.setpublic-failed', [input])
+        )
+        .catch(error => {
+          this.logger.error('Failed to set group public status:', error.message)
+          return session.text(error.name, error.array)
+        })
+    })
+
+  groupCmd.subcommand('.clone <input:string> [newName:string]')
+    .userFields(['id'])
+    .action(async ({ session }, input, newName) => {
+      const userId = session.user.id
+      return await groupService.cloneGroup(input, userId, newName)
+        .then(
+          result => result ? session.text('.clone-success', [input, result.name]) : session.text('.clone-failed', [input])
+        )
+        .catch(error => {
+          this.logger.error('Failed to clone group:', error.message)
+          return session.text(error.name, error.array)
+        })
+
+    })
+
+  const diceCmd = mainCmd.subcommand('.dice')
+  diceCmd.subcommand('.add <name:string> <faces:text>')
+    .option('group', '-g <group:string>')
+    .option('object', '-o', { fallback: false })
+    .option('jsonpath', '-j <jsonpath:string>')
     .userFields(['id'])
     .action(async ({ session, options }, name, faces) => {
       const userId = session.user.id
-      const groupName = options.group || `group${userId}`
-
-      // 使用验证函数验证骰子名格式
-      if (!validateName(name)) {
-        return session.text('.invalid-dice-name')
-      }
-
-      // 查找目标组
-      const groups = await ctx.database.get('md-dice-groups',
-        { name: groupName, userId, deleted: false }
-      )
-      if (!groups.length) return session.text('.group-not-found', [groupName])
-
-      // 解析骰子面
-      const facesArray = await parseFaces(faces, { ctx: ctx, jsonpath: options.jsonpath })
-      if (!facesArray.length) return session.text('.invalid-faces')
-
-      // 检查同名骰子
-      const existing = await ctx.database.get('md-dices',
-        { name, groupId: groups[0].id, deleted: false }
-      )
-      if (existing.length) return session.text('.duplicate-dice-name')
-
-      // 创建骰子
-      await ctx.database.create('md-dices', {
-        name,
-        faces: facesArray,
-        groupId: groups[0].id,
-        deleted: false
-      })
-
-      return session.text('.success', [name])
-    })
-
-  // 删除骰子
-  diceCmd.subcommand('.delete <dice:string>')
-    .userFields(['id'])
-    .action(async ({ session }, dice) => {
-      const userId = session.user.id
-      const diceObj = await parseDiceIdentifier(userId, dice)
-      if (!diceObj) return session.text('.dice-not-found')
-
-      await ctx.database.set('md-dices', diceObj.id, { deleted: true })
-      return session.text('.success', [diceObj.name])
-    })
-
-  // 重命名骰子
-  diceCmd.subcommand('.rename <dice:string> <newName:string>')
-    .userFields(['id'])
-    .action(async ({ session }, dice, newName) => {
-      const userId = session.user.id
-      const diceObj = await parseDiceIdentifier(userId, dice)
-      if (!diceObj) return session.text('.dice-not-found')
-
-      // 使用验证函数验证新骰子名格式
-      if (!validateName(newName)) {
-        return session.text('.invalid-dice-name')
-      }
-
-      // 检查新名称是否冲突
-      const existing = await ctx.database.get('md-dices',
-        { name: newName, groupId: diceObj.groupId, deleted: false }
-      )
-      if (existing.length) return session.text('.duplicate-dice-name')
-
-      await ctx.database.set('md-dices', diceObj.id, { name: newName })
-      return session.text('.success', [diceObj.name, newName])
-    })
-
-  // 修改骰子面
-  diceCmd.subcommand('.set <dice:string> <faces:text>', '修改骰子面')
-    .userFields(['id'])
-    .option('jsonpath', '-j [jsonpath:string]', { fallback: '' })
-    .action(async ({ session, options }, dice, faces) => {
-      const userId = session.user.id
-      const diceObj = await parseDiceIdentifier(userId, dice)
-      if (!diceObj) return session.text('.dice-not-found')
-
-      const facesArray = await parseFaces(faces, { ctx: ctx, jsonpath: options.jsonpath })
-      if (!facesArray.length) return session.text('.invalid-faces')
-
-      await ctx.database.set('md-dices', diceObj.id, { faces: facesArray })
-      return session.text('.success', [diceObj.name])
-    })
-
-  // ==============================
-  // 核心功能：掷骰命令
-  // ==============================
-  ctx.command('md.roll <dice:string> [times:number]')
-    .userFields(['id'])
-    .action(async ({ session }, dice, times = 1) => {
-      const userId = session.user.id
-      const diceObj = await parseDiceIdentifier(userId, dice)
-      if (!diceObj) return session.text('.dice-not-found')
-
-      times = Math.max(1, times)
-
-      const results = []
-      for (let i = 0; i < times; i++) {
-        const result = diceObj.faces[Math.floor(Math.random() * diceObj.faces.length)]
-        results.push(result)
-      }
-
-      if (times === 1) {
-        return session.text('.success', [results[0]])
-      } else {
-        return session.text('.multi-success', [
-          times,
-          results.join(', ')
-        ])
-      }
-    })
-
-  // ==============================
-  // 辅助命令：用户信息展示
-  // ==============================
-  ctx.command('md.info')
-    .userFields(['id'])
-    .action(async ({ session }) => {
-      const userId = session.user.id
-
-      // 获取用户的所有组
-      const groups = await ctx.database.get('md-dice-groups', {
-        userId,
-        deleted: false
-      })
-
-      if (!groups.length) return session.text('.uninitialized')
-
-      const groupInfo = await Promise.all(groups.map(async group => {
-        const diceCount = await ctx.database
-          .select('md-dices')
-          .where({
-            groupId: group.id,
-            deleted: false
-          })
-          .execute(row => $.count(row.id))
-
-        const latestDices = await ctx.database.get('md-dices',
-          {
-            groupId: group.id,
-            deleted: false
-          },
-          {
-            sort: { id: 'desc' }
-          }
+      return await diceService.addDice(name, userId, faces, options)
+        .then(
+          result => result ? session.text('.add-success', [name, result.id]) : session.text('.add-failed', [name])
         )
+        .catch(error => {
+          this.logger.error('Failed to add dice:', error.message)
+          return session.text(error.name, error.array)
+        })
+    })
 
-        const latestNames = latestDices.length
-          ? latestDices.map(d => d.name).join(', ')
-          : session.text('.no-dice')
 
-        return `${group.isPublic ? session.text(".public-prefix", [group.name, diceCount]) : session.text(".private-prefix", [group.name, diceCount])}\n  ${latestNames}`
-      }))
 
-      return `${session.text('.title')}\n${groupInfo.join('\n')}`
+  diceCmd.subcommand('.set <name:string> <faces:text>')
+    .option('group', '-g <group:string>')
+    .option('object', '-o', { fallback: false })
+    .option('jsonpath', '-j <jsonpath:string>')
+    .userFields(['id'])
+    .action(async ({ session, options }, name, faces) => {
+      const userId = session.user.id
+      return await diceService.setDiceFaces(name, userId, faces, options)
+        .then(
+          result => result ? session.text('.set-success', [name]) : session.text('.set-failed', [name])
+        )
+        .catch(error => {
+          this.logger.error('Failed to set dice faces:', error.message)
+          return session.text(error.name, error.array)
+        })
+    })
+
+  diceCmd.subcommand('.delete <input:string>')
+    .userFields(['id'])
+    .action(async ({ session }, input) => {
+      const userId = session.user.id
+      return await diceService.deleteDice(input, userId)
+        .then(
+          result => result > 0 ? session.text('.delete-success', [input]) : session.text('.delete-failed', [input])
+        )
+        .catch(error => {
+          this.logger.error('Failed to delete dice:', error.message)
+          return session.text(error.name, error.array)
+        })
+    })
+
+  diceCmd.subcommand('.rename <input:string> <newName:string>')
+    .userFields(['id'])
+    .action(async ({ session }, input, newName) => {
+      const userId = session.user.id
+      return await diceService.renameDice(input, userId, newName)
+        .then(
+          result => result > 0 ? session.text('.rename-success', [input, newName]) : session.text('.rename-failed', [input])
+        )
+        .catch(error => {
+          this.logger.error('Failed to rename dice:', error.message)
+          return session.text(error.name, error.array)
+        })
     })
 }

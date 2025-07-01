@@ -8,11 +8,11 @@ commands:
         md.roll 1
         md.roll mygroup:abc
       messages:
-        success: 您掷出了 {0}
+        roll-success: 您掷出了 {1}
+        roll-failed: 掷骰子失败。
         multi-success: |-
           您掷出了 {0} 次骰子，结果为：
           {1}
-        dice-not-found: 掷骰子失败，请检查您的骰子组或骰子名称是否正确。
 
     info:
       description: 查看骰子组和骰子信息
@@ -26,20 +26,18 @@ commands:
     init:
       description: 初始化用户骰子组
       messages:
-        success: 初始化成功！已为您创建默认骰子组。
-        fail: 您已初始化过骰子组，请勿重复初始化！
+        init-success: 初始化成功！已为您创建默认骰子组 {0}。
+        init-failed: 骰子组初始化失败。
 
     group:
       description: 骰子组管理
-      create:
+      add:
         description: 创建骰子组
         examples: |-
-          md.group.create mygroup
+          md.group.add mygroup
         messages:
-          success: '骰子组 "{0}" 创建成功！'
-          fail: 创建骰子组失败，请检查名称是否已存在或其他错误。
-          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
-          duplicate-group-name: 骰子组名称已存在，请使用其他名称。
+          add-success: '骰子组 {0}({1}) 创建成功！'
+          add-failed: 骰子组 {0} 创建失败。
 
       setpublic:
         description: 设置组公开状态
@@ -47,9 +45,9 @@ commands:
           md.group.setpublic mygroup 1
           md.group.setpublic mygroup 0
         messages:
-          group-not-found: 请检查您的骰子组名称是否正确。
-          success-public: '已将组 "{0}" 设为 [公开]。'
-          success-private: '已将组 "{0}" 设为 [私有]。'
+          setpublic-success-public: '已将组 {0} 设为 [公开]。'
+          setpublic-success-private: '已将组 {0} 设为 [私有]。'
+          setpublic-failed: '设置组 {0} 的公开状态失败。'
 
       clone:
         description: 克隆骰子组
@@ -57,23 +55,16 @@ commands:
           md.group.clone oldgroup newgroup
           md.group.clone 1 newgroup
         messages:
-          source-not-found: 源骰子组 "{0}" 不存在，请检查名称是否正确。
-          target-exists: 目标骰子组 "{0}" 已存在，请使用其他名称。
-          duplicate-group-name: 找到多个同名骰子组，请使用ID克隆
-          group-not-found: 骰子组 "{0}" 不存在，请检查名称是否正确。
-          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
-          group-name-exists: 骰子组名称已存在，请使用其他名称。
-          success: 成功克隆骰子组 "{0}" 到 "{1}"。
+          clone-success: 骰子组 {0} 已克隆为 {1} 。
+          clone-failed: 克隆骰子组 {0} 失败。
       
       rename:
         description: 重命名骰子组
         examples: |-
           md.group.rename mygroup newname
         messages:
-          group-not-found: 请检查您的骰子组名称是否正确。
-          invalid-group-name: 骰子组名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
-          duplicate-group-name: 骰子组名称已存在，请使用其他名称。
-          success: '骰子组"{0}"已重命名为"{1}"。'
+          rename-success: '骰子组 {0} 已重命名为 {1} 。'
+          rename-failed: '骰子组 {0} 重命名失败。'
 
       search:
         description: 搜索公开骰子组
@@ -91,25 +82,16 @@ commands:
         examples: |-
           md.group.delete mygroup
         messages:
-          group-not-found: 请检查您的骰子组名称是否正确。
-          success: '骰子组 "{0}" 已删除。'
+          delete-success: 骰子组 {0} 已删除。
+          delete-failed: 骰子组 {0} 删除失败。
 
     dice:
       description: 骰子管理
-      create:
+      add:
         description: 创建新骰子
-        examples: |-
-          md.dice.create abc a,b,c
-          md.dice.create abc1 a,b,c -g mygroup
-          md.dice.create abc2 base64:YSxiLGM=
-          md.dice.create abc3 -j $.result[*].face base64:eyJyZXN1bHQiOlt7ImZhY2UiOiJhIn0seyJmYWNlIjoiYiJ9LHsiZmFjZSI6ImMifV19
-          md.dice.create abc4 -j $.result[*].face https://api.example.com/dice
         messages:
-          success: '骰子 "{0}" 创建成功！'
-          group-not-found: 创建骰子失败，请检查名称是否正确或使用 md.init 初始化。
-          invalid-faces: 骰子面解析失败，请使用逗号分隔的数字列表，或base64编码的字符串。
-          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
-          duplicate-dice-name: 骰子名称已存在，请使用其他名称。
+          add-success: '骰子 {0}({1}) 创建成功！'
+          add-failed: 骰子 {0} 创建失败。
 
       rename:
         description: 重命名骰子
@@ -118,10 +100,8 @@ commands:
           md.dice.rename mygroup:abc newname
           md.dice.rename 1 newname
         messages:
-          dice-not-found: 请检查您的骰子名称是否正确。
-          invalid-dice-name: 骰子名称不合法，请使用字母、数字，以字母开头且长度不超过20个字符。
-          duplicate-dice-name: 骰子名称已存在，请使用其他名称。
-          success: '骰子"{0}"已重命名为"{1}"。'
+          rename-failed: 骰子 {0} 重命名失败。
+          rename-success: 骰子 {0} 已重命名为 {1} 。
 
       delete:
         description: 删除骰子
@@ -129,8 +109,8 @@ commands:
           md.dice.delete abc
           md.dice.delete mygroup:abc
         messages:
-          dice-not-found: 请检查您的骰子名称是否正确。
-          success: '骰子 "{0}" 已删除。'
+          delete-success: 骰子 {0} 已删除！
+          set-failed: 骰子 {0} 删除失败。
 
       set:
         description: 修改骰子面
@@ -139,6 +119,30 @@ commands:
           md.dice.set abc base64:MSwyLDMsNCw1LDY=
           md.dice.set abc -j $.result[*].face https://api.example.com/dice
         messages:
-          dice-not-found: 请检查您的骰子名称是否正确。
-          invalid-faces: 骰子面解析失败，请使用逗号分隔的数字列表，或base64编码的字符串。
-          success: '骰子 "{0}" 已更新。'
+          set-success: 骰子 {0} 设置成功！
+          set-failed: 骰子 {0} 设置失败。
+
+error:
+  group-id-not-found: 骰子组 ID {0} 不存在，请检查 ID 是否正确。
+  group-name-exists: 骰子组 {0} 已存在，请使用其他名称。
+  group-name-not-found: 骰子组名称 {0} 不存在，请检查名称是否正确。
+  group-name-not-unique: 找到多个同名骰子组 {0}，请使用ID指定。
+  group-name-invalid: 骰子组名称 {0} 不合法。{1}
+  dice-name-exists: 骰子 {0} 已存在，请使用其他名称。
+  group-uninitialized: 您还没有初始化骰子组，请先使用 md.init 初始化。
+  json-path-error: JSONPath 解析失败，请检查您的 JSONPath 表达式是否正确。
+  json-parse-error: JSON 解析失败，请检查您的 JSON 数据格式是否正确。
+  face-missing-error: 属性 {0} 缺失或不合法，请检查您的骰子面定义。
+  face-invalid: 骰子面 {0} 不合法。
+  dice-name-not-unique: 找到多个同名骰子 {0} ,请使用 ID 或者 group:dicename 指定
+  dice-id-not-found: 骰子 ID {0} 不存在，请检查 ID 是否正确。
+  dice-name-not-found: 骰子名称 {0} 不存在，请检查名称是否正确。
+  group-itialized: 用户 {0} 已经初始化过骰子组，请勿重复初始化。
+  group-clone-failed: 克隆骰子组 {0} 失败。
+
+_config:
+  DiceNameFormat: 骰子名字格式
+  GroupNameFormat: 骰子组名字格式
+  DiceNameTip: 骰子名字提示
+  GroupNameTip: 骰子组名字提示
+  
