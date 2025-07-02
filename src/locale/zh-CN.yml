@@ -75,6 +75,12 @@ commands:
       description: 骰子管理
       add:
         description: 创建新骰子
+        example: |-
+          md.dice.add -g mygroup abc a,b,c
+          md.dice.add -j $[*].face abc [{"face":"a"},{"face":"b"},{"face":"c"}]
+          md.dice.add -j $[*].face abc base64://W3siZmFjZSI6ImEifSx7ImZhY2UiOiJiIn0seyJmYWNlIjoiYyJ9XQ==
+          md.dice.add -j $[*] -o abc [{"face":"a","weight":1},{"face":"b","weight":1},{"face":"c","weight":2}]
+          md.dice.add -j $[*] -o abc [{"face":"a","weight":1},{"face":"b","weight":1},{"face":"c","weight":2,"subfaces":[{"face":"a","weight":1},{"face":"b","weight":1}]}]
         messages:
           add-success: '骰子 {0}({1}) 创建成功！'
           add-failed: 骰子 {0} 创建失败。
