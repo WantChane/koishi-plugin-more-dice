@@ -34,10 +34,6 @@ export interface DiceGroup {
 }
 
 export function databaseInit(ctx: Context) {
-    if (process.env.NODE_ENV === 'development') {
-        ctx.logger('more-dice').extend('db').warn('[development] Drop table md-dices')
-        ctx.model.drop('md-dices')
-    }
     ctx.model.extend('md-dices', {
         id: 'unsigned',
         name: 'string',
@@ -52,11 +48,6 @@ export function databaseInit(ctx: Context) {
         primary: 'id',
         autoInc: true,
     })
-
-    if (process.env.NODE_ENV === 'development') {
-        ctx.logger('more-dice').extend('db').warn('[development] Drop table md-groups')
-        ctx.model.drop('md-groups')
-    }
     ctx.model.extend('md-groups', {
         id: 'unsigned',
         name: 'string',
@@ -74,5 +65,20 @@ export function databaseInit(ctx: Context) {
     }, {
         primary: "id",
         autoInc: true,
+    })
+}
+
+export function databaseReset(ctx: Context): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+        ctx.model.drop('md-dices')
+            .then(() => ctx.model.drop('md-groups'))
+            .then(() => {
+                databaseInit(ctx)
+                resolve(true)
+            })
+            .catch(error => {
+                ctx.logger('more-dice').extend('db').error('Failed to reset database:', error.message)
+                reject(error)
+            })
     })
 }

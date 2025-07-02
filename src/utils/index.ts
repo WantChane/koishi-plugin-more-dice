@@ -1,11 +1,17 @@
 export function parseToNum(input: string): number | string {
-    const numericValue = Number(input);
+    const numericValue = Number(input)
     if (
         !isNaN(numericValue) &&
         Number.isInteger(numericValue) &&
         numericValue >= 0
     ) {
-        return numericValue;
+        return numericValue
     }
-    return input;
+    return input
+}
+
+export function formatString(template: string, object: Record<string, any>): string {
+    return template.replace(/\{(\w+)\}/g, (_, key) => {
+        return object.hasOwnProperty(key) ? String(object[key]) : `{${key}}`
+    })
 }

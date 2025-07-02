@@ -3,7 +3,7 @@ import { Context, Logger } from 'koishi'
 import { Dice, DiceGroup, Face } from "../db"
 import { DiceDao } from '../db/dice.dao'
 import { DiceIdNotFound, DiceNameExists, DiceNameInvalid, DiceNameNotFound, DiceNameNotUnique, FaceInvalid, FaceMissingError, GroupNameNotFound, GroupUnitialized, JsonParseError, JsonPathError, RollTimesInvalid } from '../error'
-import { parseToNum } from "../utils"
+import { formatString, parseToNum } from "../utils"
 import { GroupService } from "./group.service"
 
 export class DiceService {
@@ -250,6 +250,4 @@ export class DiceService {
             .then(result => result > 0 ? result : -1)
             .catch(() => -1)
     }
-
-
 }

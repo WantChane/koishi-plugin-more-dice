@@ -13,15 +13,12 @@ commands:
         multi-success: |-
           您掷出了 {0} 次骰子，结果为：
           {1}
-
-    info:
-      description: 查看骰子组和骰子信息
+    
+    reset:
+      description: 重置数据库
       messages:
-        title: '您的骰子组:'
-        uninitialized: 您还没有初始化骰子组，请先使 md.init 初始化。
-        no-dice: 暂无骰子。
-        public-prefix: '[公开] {0}, {1}个骰子'
-        private-prefix: '[私有] {0}, {1}个骰子'
+        reset-success: 数据库已重置成功。
+        reset-failed: 数据库重置失败。
 
     init:
       description: 初始化用户骰子组
@@ -65,17 +62,6 @@ commands:
         messages:
           rename-success: '骰子组 {0} 已重命名为 {1} 。'
           rename-failed: '骰子组 {0} 重命名失败。'
-
-      search:
-        description: 搜索公开骰子组
-        examples: |-
-          md.group.search othergroup
-        messages:
-          group-not-found: 未找到匹配的骰子组。
-          results: |-
-            找到的公开骰子组:
-            {0}
-          group-info: ' {0}(ID: {1})'
 
       delete:
         description: 删除骰子组
@@ -145,4 +131,4 @@ _config:
   GroupNameFormat: 骰子组名字格式
   DiceNameTip: 骰子名字提示
   GroupNameTip: 骰子组名字提示
-  
+  RollResultSeparator: 嵌套骰子结果分隔符

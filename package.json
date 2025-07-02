@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-more-dice",
   "description": "a Koishi plugin providing more dice",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -13,6 +13,10 @@
     "random",
     "dice"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WantChane/koishi-plugin-more-dice.git"
+  },
   "peerDependencies": {
     "jsonpath-plus": "^10.3.0",
     "koishi": "^4.18.7"
@@ -20,7 +24,7 @@
   "koishi": {
     "description": {
       "en": "a Koishi plugin providing more dice",
-      "zh": "一个提供更多骰子功能的 Koishi 插件"
+      "zh": "一个提供更多骰子功能的 Koishi 插件，注意1.0.3包含Breaking Change，你可能需要使用 md.reset 命令重置数据库。"
     },
     "service": {
       "required": [

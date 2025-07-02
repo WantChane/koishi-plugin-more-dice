@@ -7,7 +7,7 @@ export const inject = {
 
 export * from './config'
 
-import { DiceDao, GroupDao, databaseInit } from './db'
+import { DiceDao, GroupDao, databaseInit, databaseReset } from './db'
 import { GroupService } from './service'
 import { DiceService } from './service/dice.service'
 
@@ -45,13 +45,38 @@ export function apply(ctx: Context) {
       const userId = session.user.id
       return await diceService.rollDice(input, userId, times)
         .then(
-          result => result ? session.text('.roll-success', [input, result.join(', ')]) : session.text('.roll-failed', [input])
+          result => {
+            if (result.length === 0) {
+              return session.text('.roll-failed', [input])
+            }
+            if (result.length === 1) {
+              return session.text('.roll-success', [input, result[0]])
+            }
+            return session.text('.multi-success', [times || 1, result.join('\n')])
+          }
         )
         .catch(error => {
-          this.logger.error('Failed to roll dice:', error.message)
+          logger.error('Failed to roll dice:', error.message)
           return session.text(error.name, error.array)
         })
     })
+
+  mainCmd.subcommand('.reset', { authority: 4 })
+    .action(async ({ session }) => {
+      await session.send('是否清除所有数据？输入“是”确认。')
+      await session.send('注意：此操作不可逆！所有骰子和分组数据将被删除。')
+      const confirmation = await session.prompt(10000)
+      logger.info('User confirmation for reset:', confirmation)
+      if (confirmation === '是') {
+        return databaseReset(ctx)
+          .then(result => result ? session.text('.reset-success') : session.text('.reset-failed'))
+          .catch(error => {
+            logger.error('Failed to reset database:', error.message)
+            return session.text(error.name, error.array)
+          })
+      }
+    })
+
 
   const groupCmd = mainCmd.subcommand('.group')
   groupCmd.subcommand('.add <name:text>')
