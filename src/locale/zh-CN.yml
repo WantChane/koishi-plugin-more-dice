@@ -75,12 +75,8 @@ commands:
       description: 骰子管理
       add:
         description: 创建新骰子
-        example: |-
-          md.dice.add -g mygroup abc a,b,c
-          md.dice.add -j $[*].face abc [{"face":"a"},{"face":"b"},{"face":"c"}]
-          md.dice.add -j $[*].face abc base64://W3siZmFjZSI6ImEifSx7ImZhY2UiOiJiIn0seyJmYWNlIjoiYyJ9XQ==
-          md.dice.add -j $[*] -o abc [{"face":"a","weight":1},{"face":"b","weight":1},{"face":"c","weight":2}]
-          md.dice.add -j $[*] -o abc [{"face":"a","weight":1},{"face":"b","weight":1},{"face":"c","weight":2,"subfaces":[{"face":"a","weight":1},{"face":"b","weight":1}]}]
+        examples: |-
+          关于添加骰子的更多信息，请查看 https://github.com/WantChane/koishi-plugin-more-dice
         messages:
           add-success: '骰子 {0}({1}) 创建成功！'
           add-failed: 骰子 {0} 创建失败。
@@ -129,10 +125,11 @@ commands:
           add-success-private: 令牌已经添加成功，已发送到您的私聊。
 
       clear:
-        description: 清除令牌
+        description: 清除所有令牌
         messages:
           clear-success: 令牌已清除。
           clear-failed: 令牌清除失败。
+
 error:
   group-id-not-found: 骰子组 ID {0} 不存在，请检查 ID 是否正确。
   group-name-exists: 骰子组 {0} 已存在，请使用其他名称。
@@ -157,3 +154,7 @@ _config:
   DiceNameTip: 骰子名字提示
   GroupNameTip: 骰子组名字提示
   RollResultSeparator: 嵌套骰子结果分隔符
+  Server:
+    enabled: 启用服务器
+    path: 监听路径
+    token_expire: 令牌默认过期时间（秒）

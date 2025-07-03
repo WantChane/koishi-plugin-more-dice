@@ -14,6 +14,8 @@ export const inject = {
   optional: ['http', 'server'],
 }
 
+export const usage = "## 有关如何使用，请查看 [README.md](https://github.com/WantChane/koishi-plugin-more-dice)"
+
 export function apply(c: Context, config: Config) {
   c.i18n.define('zh-CN', require('./locale/zh-CN.yml'))
   const logger = c.logger('more-dice').extend('main')
@@ -25,8 +27,8 @@ export function apply(c: Context, config: Config) {
   const groupService = new GroupService(groupDao, diceDao, c)
   const diceService = new DiceService(diceDao, groupService, c)
   const mainCmd = c.command('md')
-  if (config.Server?.enabled) {
 
+  if (config.Server?.enabled) {
     const tokenDao = new TokenDao(c)
     const tokenService = new TokenService(tokenDao, c)
     c.server.post(config.Server.path, (ctx, next) => {
@@ -47,19 +49,20 @@ export function apply(c: Context, config: Config) {
         ctx.status = 404
         ctx.body = { code: 404, message: 'Action not supported' }
       }
-      const { token, name, faces, group } = body.data
+      const userId = await tokenService.getUserIdByToken(body.token)
+      const { name, faces, group } = body.data
       const options = {
         group: group,
         object: true,
         jsonpath: "$[*]"
       }
-      const userId = await tokenService.getUserIdByToken(token)
       if (!userId) {
         ctx.status = 401
         ctx.body = { code: 401, message: 'Invalid or expired token' }
         return
       }
-      await diceService.addDice(name, userId, JSON.stringify(faces), options).then(
+      const parsedFaces = typeof faces === 'string' ? faces : JSON.stringify(faces)
+      await diceService.addDice(name, userId, parsedFaces, options).then(
         result => {
           if (result) {
             ctx.status = 200
@@ -69,7 +72,10 @@ export function apply(c: Context, config: Config) {
             ctx.body = { code: 500, message: 'Failed to add dice' }
           }
         }
-      )
+      ).catch(error => {
+        ctx.status = 500
+        ctx.body = { code: 500, message: error.message }
+      })
     })
 
     const tokenCmd = mainCmd.subcommand('.token')
