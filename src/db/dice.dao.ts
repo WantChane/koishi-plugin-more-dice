@@ -138,6 +138,14 @@ export class DiceDao {
 
     }
 
+    async deleteDicesByGroupId(groupId: number): Promise<number> {
+        return this.db.set('md-dices', { groupId, deleted: false }, { deleted: true })
+            .then(({ matched }) => matched)
+            .catch(e => {
+                throw new Error(`Failed to delete dices by group ID ${groupId}: ${e.message}`)
+            })
+    }
+
     async updateDice(dice: Dice): Promise<number> {
         return this.db.set('md-dices', { id: dice.id, deleted: false }, { name: dice.name, groupId: dice.groupId, faces: dice.faces })
             .then(({ matched }) => matched)

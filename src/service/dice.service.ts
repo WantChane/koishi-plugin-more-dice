@@ -225,6 +225,13 @@ export class DiceService {
             .catch(() => -1)
     }
 
+    async deleteDiceByGroupId(groupId: number, userId: number): Promise<number> {
+        const group = await this.groupService.getMyGroup(groupId.toString(), userId)
+        return this.diceDao.deleteDicesByGroupId(group.id)
+            .then(result => result > 0 ? result : -1)
+            .catch(() => -1)
+    }
+
     async setDiceFaces(input: string, userId: number, faces: string, options): Promise<number> {
         const dice = await this.getMyDice(input, userId)
         dice.faces = await this.#parseFacesInput(faces, options)

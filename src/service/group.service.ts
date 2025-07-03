@@ -121,6 +121,7 @@ export class GroupService {
 
     async deleteGroup(input: string, userId: number): Promise<number> {
         const group = await this.getMyGroup(input, userId)
+        await this.diceDao.deleteDicesByGroupId(group.id)
         return this.groupDao.deleteGroup(group)
             .then(result => result)
             .catch(() => -1)
