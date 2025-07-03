@@ -11,6 +11,8 @@ export interface Config {
     DiceNameTip: string,
     GroupNameFormat: string,
     GroupNameTip: string,
+    RollResultTemplate: string,
+    RollResultsTemplate: string,
     RollResultSeparator: string,
     Server: Server
 }
@@ -27,6 +29,12 @@ export const Config: Schema<Config> = Schema.object({
     ),
     GroupNameTip: Schema.string().default(
         '骰子组名称必须以字母开头，且长度不超过20个字符。只能包含字母和数字。'
+    ),
+    RollResultsTemplate: Schema.string().default(
+        '{index}. {face}'
+    ),
+    RollResultTemplate: Schema.string().default(
+        '{face}'
     ),
     RollResultSeparator: Schema.string().default(
         '-'

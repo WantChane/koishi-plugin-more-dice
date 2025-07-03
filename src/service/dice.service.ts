@@ -3,8 +3,10 @@ import { Context, Logger } from 'koishi'
 import { Dice, DiceGroup, Face } from "../db"
 import { DiceDao } from '../db/dice.dao'
 import { DiceIdNotFound, DiceNameExists, DiceNameInvalid, DiceNameNotFound, DiceNameNotUnique, FaceInvalid, FaceMissingError, GroupNameNotFound, GroupUnitialized, JsonParseError, JsonPathError, RollTimesInvalid } from '../error'
-import { parseToNum } from "../utils"
+import { formatString, parseToNum } from "../utils"
 import { GroupService } from "./group.service"
+import { select } from '@satorijs/element/jsx-runtime'
+import { format } from 'path'
 
 export class DiceService {
     private readonly logger: Logger
@@ -12,6 +14,8 @@ export class DiceService {
     private readonly diceNameTip: string
     private readonly http: any
     private readonly rollResultSeparator: string
+    private readonly rollResultTemplate: string = '{face}'
+    private readonly rollResultsTemplate: string = '{index}. {face}'
     constructor(
         private diceDao: DiceDao,
         private groupService: GroupService,
@@ -23,6 +27,8 @@ export class DiceService {
         this.diceNameTip = ctx.config.DiceNameTip || '骰子组名称必须以字母开头，且长度不超过20个字符。只能包含字母和数字。'
         this.http = ctx.http
         this.rollResultSeparator = ctx.config.RollResultSeparator || '-'
+        this.rollResultTemplate = ctx.config.RollResultTemplate || '{face}'
+        this.rollResultsTemplate = ctx.config.RollResultsTemplate || '{index}. {face}'
     }
 
     #validateInput(name: string, regex: string = this.diceNameFormat): boolean {
@@ -53,6 +59,45 @@ export class DiceService {
             } else {
                 break
             }
+        }
+        return result.join(this.rollResultSeparator)
+    }
+
+    #deepCopyDice(dice: Dice): Dice {
+        const copyFaces = (faces: Face[]): Face[] =>
+            faces.map(face => ({
+                ...face,
+                subfaces: face.subfaces ? copyFaces(face.subfaces) : undefined
+            }))
+
+        return {
+            ...dice,
+            faces: copyFaces(dice.faces)
+        }
+    }
+
+    #rollDiceWithoutReplacement(dice: Dice): string {
+        const result: string[] = []
+        let currentLayer: Face[] = dice.faces
+        while (currentLayer.length > 0) {
+            const totalWeight = currentLayer.reduce((sum, f) => sum + (f.weight ?? 1), 0)
+            let random = Math.random() * totalWeight
+            let selectedIndex = -1
+
+            for (let i = 0; i < currentLayer.length; i++) {
+                random -= currentLayer[i].weight ?? 1
+                if (random <= 0) {
+                    selectedIndex = i
+                    break
+                }
+            }
+            if (selectedIndex === -1) selectedIndex = currentLayer.length - 1
+            const selectedFace = currentLayer[selectedIndex]
+            currentLayer.splice(selectedIndex, 1)
+            result.push(selectedFace.face)
+            currentLayer = selectedFace.subfaces?.length > 0
+                ? selectedFace.subfaces
+                : []
         }
         return result.join(this.rollResultSeparator)
     }
@@ -205,18 +250,36 @@ export class DiceService {
         }
     }
 
-    async rollDice(input: string, userId: number, times: number = 1): Promise<string[]> {
-        const dice = await this.getMyDice(input, userId)
+    async rollDice(input: string, userId: number, times: number = 1, withoutReplacement: boolean = false): Promise<string[]> {
+        const originalDice = await this.getMyDice(input, userId)
         if (times <= 0 || !Number.isInteger(times)) {
             throw new RollTimesInvalid(times)
         }
         const results: string[] = []
-        for (let i = 0; i < times; i++) {
-            const result = this.#rollDice(dice)
-            results.push(result)
+        if (withoutReplacement && times > 1) {
+            const diceCopy = this.#deepCopyDice(originalDice)
+            for (let i = 0; i < times; i++) {
+                const result = this.#rollDiceWithoutReplacement(diceCopy)
+                if (times > 1) {
+                    results.push(formatString(this.rollResultsTemplate, { index: i + 1, face: result }))
+                } else {
+                    results.push(formatString(this.rollResultTemplate, { face: result }))
+                }
+            }
+        } else {
+            for (let i = 0; i < times; i++) {
+                const result = this.#rollDice(originalDice)
+                if (times > 1) {
+                    results.push(formatString(this.rollResultsTemplate, { index: i + 1, face: result }))
+                } else {
+                    results.push(formatString(this.rollResultTemplate, { face: result }))
+                }
+            }
         }
         return results
     }
+
+
 
     async deleteDice(input: string, userId: number): Promise<number> {
         const dice = await this.getMyDice(input, userId)

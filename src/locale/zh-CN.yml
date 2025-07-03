@@ -154,6 +154,8 @@ _config:
   DiceNameTip: 骰子名字提示
   GroupNameTip: 骰子组名字提示
   RollResultSeparator: 嵌套骰子结果分隔符
+  RollResultTemplate: 掷骰子结果模板
+  RollResultsTemplate: 多次掷骰子结果模板
   Server:
     enabled: 启用服务器
     path: 监听路径

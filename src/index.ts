@@ -137,10 +137,11 @@ export function apply(c: Context, config: Config) {
     })
 
   mainCmd.subcommand('.roll <input:string> [times:number]')
+    .option('withoutReplacement', '-w', { fallback: false })
     .userFields(['id'])
-    .action(async ({ session }, input, times) => {
+    .action(async ({ session, options }, input, times) => {
       const userId = session.user.id
-      return await diceService.rollDice(input, userId, times)
+      return await diceService.rollDice(input, userId, times, options.withoutReplacement)
         .then(
           result => {
             if (result.length === 0) {
