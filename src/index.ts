@@ -1,29 +1,120 @@
+import type { } from "@koishijs/plugin-server"
 import { Context } from 'koishi'
+export * from './config'
+import { Config } from './config'
+import { DiceDao, GroupDao, databaseInit, databaseReset } from './db'
+import { TokenDao } from './db/token.dao'
+import { GroupService } from './service'
+import { DiceService } from './service/dice.service'
+import { TokenService } from './service/token.service'
+
 export const name = 'more-dice'
 export const inject = {
   required: ['database'],
-  optional: ['http'],
+  optional: ['http', 'server'],
 }
 
-export * from './config'
+export function apply(c: Context, config: Config) {
+  c.i18n.define('zh-CN', require('./locale/zh-CN.yml'))
+  const logger = c.logger('more-dice').extend('main')
+  databaseInit(c)
 
-import { DiceDao, GroupDao, databaseInit, databaseReset } from './db'
-import { GroupService } from './service'
-import { DiceService } from './service/dice.service'
+  const groupDao = new GroupDao(c)
+  const diceDao = new DiceDao(c)
 
-export function apply(ctx: Context) {
-  ctx.i18n.define('zh-CN', require('./locale/zh-CN.yml'))
+  const groupService = new GroupService(groupDao, diceDao, c)
+  const diceService = new DiceService(diceDao, groupService, c)
+  const mainCmd = c.command('md')
+  if (config.Server?.enabled) {
 
-  const logger = ctx.logger('more-dice').extend('main')
-  databaseInit(ctx)
+    const tokenDao = new TokenDao(c)
+    const tokenService = new TokenService(tokenDao, c)
+    c.server.post(config.Server.path, (ctx, next) => {
+      if (ctx.headers['content-type'] !== 'application/json') {
+        ctx.status = 400
+        ctx.body = { code: 400, message: 'Invalid content type' }
+        return
+      }
+      return next()
+    }, async (ctx) => {
+      const body = ctx.request.body
+      if (typeof body !== 'object' || body === null) {
+        ctx.status = 400
+        ctx.body = { code: 400, message: 'Request body must be JSON object' }
+        return
+      }
+      if (body.action !== 'add') {
+        ctx.status = 404
+        ctx.body = { code: 404, message: 'Action not supported' }
+      }
+      const { token, name, faces, group } = body.data
+      const options = {
+        group: group,
+        object: true,
+        jsonpath: "$[*]"
+      }
+      const userId = await tokenService.getUserIdByToken(token)
+      if (!userId) {
+        ctx.status = 401
+        ctx.body = { code: 401, message: 'Invalid or expired token' }
+        return
+      }
+      await diceService.addDice(name, userId, JSON.stringify(faces), options).then(
+        result => {
+          if (result) {
+            ctx.status = 200
+            ctx.body = { code: 200, message: 'Dice added successfully', data: { name: result.name, id: result.id } }
+          } else {
+            ctx.status = 500
+            ctx.body = { code: 500, message: 'Failed to add dice' }
+          }
+        }
+      )
+    })
 
-  const groupDao = new GroupDao(ctx)
-  const diceDao = new DiceDao(ctx)
+    const tokenCmd = mainCmd.subcommand('.token')
+    tokenCmd.subcommand('.add [expire:number]')
+      .userFields(['id'])
+      .action(async ({ session }, expire) => {
+        const userId = session.user.id
+        return await tokenService.addToken(userId, expire)
+          .then(
+            result => {
+              if (!result) return session.text('.add-failed')
+              const successMessage = session.text('.add-success', [result.token, result.expiresAt.toLocaleString()])
+              if (session.isDirect) {
+                return successMessage
+              } else {
+                return session.bot.sendPrivateMessage(session.userId, successMessage).then(() => {
+                  return session.text('.add-success-private', [result.token, result.expiresAt.toLocaleString()])
+                }).catch(error => {
+                  logger.error('Failed to send private message:', error.message)
+                  return session.text(error.name, [result])
+                })
+              }
+            }
+          )
+          .catch(error => {
+            logger.error('Failed to add token:', error.message)
+            return session.text(error.name, error.array)
+          })
+      })
 
-  const groupService = new GroupService(groupDao, diceDao, ctx)
-  const diceService = new DiceService(diceDao, groupService, ctx)
+    tokenCmd.subcommand('.clear')
+      .userFields(['id'])
+      .action(async ({ session }) => {
+        const userId = session.user.id
+        return await tokenService.clearTokens(userId)
+          .then(
+            result => result ? session.text('.clear-success') : session.text('.clear-failed')
+          )
+          .catch(error => {
+            logger.error('Failed to clear token:', error.message)
+            return session.text(error.name, error.array)
+          })
+      })
+  }
 
-  const mainCmd = ctx.command('md')
 
   mainCmd.subcommand('.init')
     .userFields(['id'])
@@ -66,9 +157,8 @@ export function apply(ctx: Context) {
       await session.send('是否清除所有数据？输入“是”确认。')
       await session.send('注意：此操作不可逆！所有骰子和分组数据将被删除。')
       const confirmation = await session.prompt(10000)
-      logger.info('User confirmation for reset:', confirmation)
       if (confirmation === '是') {
-        return databaseReset(ctx)
+        return databaseReset(c)
           .then(result => result ? session.text('.reset-success') : session.text('.reset-failed'))
           .catch(error => {
             logger.error('Failed to reset database:', error.message)

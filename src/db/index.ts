@@ -7,7 +7,17 @@ declare module 'koishi' {
     interface Tables {
         "md-dices": Dice,
         "md-groups": DiceGroup,
+        "md-tokens": Token
     }
+}
+
+export interface Token {
+    id: number
+    userId: number
+    token: string
+    createdAt: Date
+    updatedAt: Date
+    expiresAt: Date
 }
 
 export interface Face {
@@ -66,19 +76,28 @@ export function databaseInit(ctx: Context) {
         primary: "id",
         autoInc: true,
     })
+    ctx.model.extend('md-tokens', {
+        id: 'unsigned',
+        userId: 'unsigned',
+        token: 'string',
+        createdAt: 'timestamp',
+        updatedAt: 'timestamp',
+        expiresAt: 'timestamp',
+    }, {
+        primary: 'id',
+        autoInc: true,
+    })
 }
 
-export function databaseReset(ctx: Context): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-        ctx.model.drop('md-dices')
-            .then(() => ctx.model.drop('md-groups'))
-            .then(() => {
-                databaseInit(ctx)
-                resolve(true)
-            })
-            .catch(error => {
-                ctx.logger('more-dice').extend('db').error('Failed to reset database:', error.message)
-                reject(error)
-            })
-    })
+export async function databaseReset(ctx: Context): Promise<boolean> {
+    try {
+        await ctx.model.drop('md-dices')
+        await ctx.model.drop('md-groups')
+        await ctx.model.drop('md-tokens')
+        databaseInit(ctx)
+        return true
+    } catch (error) {
+        ctx.logger('more-dice').error('Failed to reset database:', error)
+        return false
+    }
 }

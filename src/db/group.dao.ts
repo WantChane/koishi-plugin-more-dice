@@ -1,5 +1,5 @@
 import { Context, Database, Query, Tables, $, Logger } from 'koishi'
-import { Dice, DiceGroup } from './index'
+import { DiceGroup } from './index'
 
 export class GroupDao {
     private readonly db: Database<Tables>

@@ -1,11 +1,18 @@
 import { Schema } from 'koishi'
 
+interface Server {
+    enabled?: boolean,
+    path?: string,
+    token_expire?: number,
+}
+
 export interface Config {
     DiceNameFormat: string,
     DiceNameTip: string,
     GroupNameFormat: string,
     GroupNameTip: string,
     RollResultSeparator: string,
+    Server: Server
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -24,6 +31,19 @@ export const Config: Schema<Config> = Schema.object({
     RollResultSeparator: Schema.string().default(
         '-'
     ),
+    Server: Schema.intersect([
+        Schema.object({
+            enabled: Schema.boolean().default(false),
+        }).description('基础配置'),
+        Schema.union([
+            Schema.object({
+                enabled: Schema.const(true).required(),
+                path: Schema.string().default('/more-dice'),
+                token_expire: Schema.number().default(3600),
+            }),
+            Schema.object({}),
+        ])
+    ])
 }).i18n({
     'zh-CN': require('../locale/zh-CN.yml')._config,
 })

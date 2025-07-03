@@ -3,7 +3,7 @@ import { Context, Logger } from 'koishi'
 import { Dice, DiceGroup, Face } from "../db"
 import { DiceDao } from '../db/dice.dao'
 import { DiceIdNotFound, DiceNameExists, DiceNameInvalid, DiceNameNotFound, DiceNameNotUnique, FaceInvalid, FaceMissingError, GroupNameNotFound, GroupUnitialized, JsonParseError, JsonPathError, RollTimesInvalid } from '../error'
-import { formatString, parseToNum } from "../utils"
+import { parseToNum } from "../utils"
 import { GroupService } from "./group.service"
 
 export class DiceService {
